@@ -14,6 +14,7 @@
       --btn-bg: #334155;
       --team-a: #38bdf8;
       --team-b: #f59e0b;
+      --badge-bg: #0369a1;
     }
     * {
       box-sizing: border-box;
@@ -36,23 +37,34 @@
       background: var(--card-bg);
       border: 1px solid #334155;
       border-radius: 0.75rem;
-      padding: 0.75rem;
+      padding: 0.75rem 1rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 0.75rem;
     }
+    .ratio-meta {
+      display: flex;
+      flex-direction: column;
+    }
     .ratio-label {
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       color: var(--subtext);
+      font-weight: 700;
+    }
+    .point-indicator {
+      font-size: 0.9rem;
+      color: var(--text);
+      font-weight: 600;
     }
     .ratio-code {
-      font-size: 1.75rem;
+      font-size: 2.25rem;
       font-weight: 900;
       color: var(--accent);
       letter-spacing: 0.05em;
+      line-height: 1;
     }
     .teams-container {
       display: grid;
@@ -83,7 +95,7 @@
       margin-bottom: 0.25rem;
     }
     .score-val {
-      font-size: 4rem;
+      font-size: 3.75rem;
       font-weight: 900;
       line-height: 1;
       margin: 0.5rem 0 0.75rem;
@@ -111,15 +123,14 @@
       flex: 1;
       display: flex;
       flex-direction: column;
-      min-height: 180px;
-      max-height: 240px;
+      min-height: 200px;
     }
     .history-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 0.5rem;
-      padding-bottom: 0.25rem;
+      padding-bottom: 0.35rem;
       border-bottom: 1px solid #334155;
     }
     .history-title {
@@ -127,6 +138,7 @@
       text-transform: uppercase;
       letter-spacing: 0.05em;
       color: var(--subtext);
+      font-weight: 700;
     }
     .undo-btn {
       background: transparent;
@@ -144,18 +156,39 @@
       flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 0.35rem;
+      gap: 0.4rem;
     }
     .history-row {
       display: flex;
       justify-content: space-between;
+      align-items: center;
       font-size: 0.85rem;
-      padding: 0.25rem 0.5rem;
+      padding: 0.35rem 0.6rem;
       background: #0f172a;
+      border-radius: 0.35rem;
+    }
+    .history-left {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .ratio-badge {
+      background: #334155;
+      color: #38bdf8;
+      font-weight: 800;
+      font-size: 0.75rem;
+      padding: 0.15rem 0.4rem;
       border-radius: 0.25rem;
+      min-width: 2.25rem;
+      text-align: center;
     }
     .tag-a { color: var(--team-a); font-weight: 700; }
     .tag-b { color: var(--team-b); font-weight: 700; }
+    .history-score {
+      font-weight: 800;
+      color: #cbd5e1;
+      font-variant-numeric: tabular-nums;
+    }
 
     .footer-bar {
       margin-top: 0.75rem;
@@ -178,7 +211,10 @@
 <body>
 
   <header class="ratio-banner">
-    <span class="ratio-label">Ratio Next Point</span>
+    <div class="ratio-meta">
+      <span class="ratio-label">Current Ratio</span>
+      <span class="point-indicator" id="current-point-label">Point 1</span>
+    </div>
     <span class="ratio-code" id="ratio-text">F1</span>
   </header>
 
@@ -205,7 +241,7 @@
   </section>
 
   <footer class="footer-bar">
-    <button class="util-btn" onclick="toggleStartGender()">Toggle Start (F/M)</button>
+    <button class="util-btn" onclick="toggleStartGender()">Flip Start (F/M)</button>
     <button class="util-btn" onclick="resetGame()">Reset Match</button>
   </footer>
 
@@ -213,13 +249,10 @@
     let state = {
       scoreA: 0,
       scoreB: 0,
-      startGender: 'F', // 'F' = F1 first, 'M' = M1 first
-      history: [] // Array of { pointNum, scoringTeam, ratioPlayed, scoreSnap }
+      startGender: 'F',
+      history: []
     };
 
-    // Sequence follows standard Rule 44 / Ratio Rule A:
-    // F start: F1, M1, M2, F1, F2, M1, M2, ...
-    // M start: M1, F1, F2, M1, M2, F1, F2, ...
     function getRatioCode(pointNumber, startGender) {
       if (pointNumber === 1) {
         return startGender === 'F' ? 'F1' : 'M1';
@@ -227,7 +260,6 @@
       const pairIndex = Math.floor((pointNumber - 2) / 2);
       const isSecondInPair = (pointNumber - 2) % 2 === 1;
 
-      // Determine the primary gender for this pair
       const pairGender = (pairIndex % 2 === 0)
         ? (startGender === 'F' ? 'M' : 'F')
         : (startGender === 'F' ? 'F' : 'M');
@@ -240,13 +272,15 @@
       document.getElementById('score-a').innerText = state.scoreA;
       document.getElementById('score-b').innerText = state.scoreB;
 
-      const nextPoint = state.scoreA + state.scoreB + 1;
-      document.getElementById('ratio-text').innerText = getRatioCode(nextPoint, state.startGender);
+      // Current point being played
+      const currentPoint = state.scoreA + state.scoreB + 1;
+      document.getElementById('current-point-label').innerText = `Point ${currentPoint}`;
+      document.getElementById('ratio-text').innerText = getRatioCode(currentPoint, state.startGender);
 
       const logContainer = document.getElementById('history-log');
       logContainer.innerHTML = '';
       
-      // Render reverse chronological
+      // Render reverse chronological so latest point is always on top
       for (let i = state.history.length - 1; i >= 0; i--) {
         const item = state.history[i];
         const teamName = item.team === 'a' 
@@ -257,24 +291,27 @@
         const row = document.createElement('div');
         row.className = 'history-row';
         row.innerHTML = `
-          <span>Pt ${item.point}: <span class="${tagClass}">${teamName}</span> (${item.ratio})</span>
-          <span>${item.scoreSnap}</span>
+          <div class="history-left">
+            <span class="ratio-badge">${item.ratio}</span>
+            <span>Pt ${item.point}: <span class="${tagClass}">${teamName}</span></span>
+          </div>
+          <span class="history-score">${item.scoreSnap}</span>
         `;
         logContainer.appendChild(row);
       }
     }
 
     function addGoal(team) {
-      const nextPoint = state.scoreA + state.scoreB + 1;
-      const ratioForPoint = getRatioCode(nextPoint, state.startGender);
+      const activePoint = state.scoreA + state.scoreB + 1;
+      const ratioDuringPoint = getRatioCode(activePoint, state.startGender);
 
       if (team === 'a') state.scoreA++;
       if (team === 'b') state.scoreB++;
 
       state.history.push({
-        point: nextPoint,
+        point: activePoint,
         team: team,
-        ratio: ratioForPoint,
+        ratio: ratioDuringPoint,
         scoreSnap: `${state.scoreA} - ${state.scoreB}`
       });
 
@@ -298,7 +335,7 @@
     }
 
     function resetGame() {
-      if (!confirm("Reset score and history?")) return;
+      if (!confirm("Reset match scores and history?")) return;
       state.scoreA = 0;
       state.scoreB = 0;
       state.history = [];
